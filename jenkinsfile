@@ -1,0 +1,80 @@
+pipeline { 
+
+    environment { 
+
+        registry = "akshay4444/micro" 
+
+        registryCredential = 'docker_cred'
+        
+        dockerImage = 'test_1' 
+
+    }
+
+    agent any 
+
+    stages { 
+
+        stage('Cloning our Git') { 
+
+            steps { 
+
+                git 'https://github.com/Akshay5596/sample-docker-argo.git' 
+
+            }
+
+        } 
+
+        stage('Building our image') { 
+
+            steps { 
+
+                script { 
+
+                    dockerImage = docker.build registry + ":$BUILD_NUMBER" 
+
+                }
+
+            } 
+
+        }
+        stage('Scan Docker Image') {
+            steps {
+                script {
+                    sh 'trivy image  $registry:$BUILD_NUMBER > scan_results.txt'
+                    archiveArtifacts 'scan_results.txt'
+             
+                }
+            }
+        }
+
+        stage('Push image') { 
+
+            steps { 
+
+                script { 
+
+                    docker.withRegistry( '', registryCredential ) { 
+
+                        dockerImage.push() 
+
+                    }
+
+                } 
+
+            }
+
+        } 
+
+        stage('Cleaning up') { 
+
+            steps { 
+
+                sh "docker rmi $registry:$BUILD_NUMBER" 
+
+            }
+
+        } 
+
+    }
+
+}
